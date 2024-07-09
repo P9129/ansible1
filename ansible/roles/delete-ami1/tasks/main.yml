@@ -1,0 +1,37 @@
+---
+
+- name: Get AMI facts
+  amazon.aws.ec2_ami_info: 
+    region: "{{ region }}"
+    filters: {"image-type": "machine", "is-public": "false"}
+  register: ami_facts
+
+- name: Print raw AMI facts
+  debug:
+    var: ami_facts
+
+- name: Filter AMIs by time range and tag
+  set_fact:
+    amis_to_delete: "{{ ami_facts.images
+     | selectattr('creation_date', '>=', start_time) 
+     | selectattr('creation_date', '<=', end_time) 
+     | selectattr('tags.dont_delete', 'defined') | selectattr('tags.dont_delete', 'equalto', 'false') | list + ami_facts.images | selectattr('tags.dont_delete', 'undefined') | list }}" 
+   
+ 
+  
+- name: Print filtered AMIs
+  debug:
+    var: amis_to_delete
+
+- name: Print AMIs to delete
+  debug:
+    msg: "{{ amis_to_delete | map(attribute='image_id') | list }}"
+
+- name: Delete AMIs and their snapshots
+  amazon.aws.ec2_ami:
+    image_id: "{{ item }}"
+    state: absent
+    delete_snapshot: true
+    region: "{{ region }}"
+  with_items: "{{ amis_to_delete | map(attribute='image_id') | list }}"
+  when: amis_to_delete | length > 0

@@ -1,0 +1,8 @@
+---
+#galaxy_info:
+#  author: Harsimran/priyanka
+#  description: Role for ec2 instances lunch.
+#  company: IGP
+#  license: GPL
+#  min_ansible_version: 2.0
+dependencies: []

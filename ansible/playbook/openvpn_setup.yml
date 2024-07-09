@@ -1,0 +1,24 @@
+# Playbook to setup openvpn server
+# Notes:
+# ec2up --> 
+# openvpn-setup  -->  
+# Example invocation:
+# ansible-playbook /etc/ansible/playbooks/openvpn_setup.yml -e 
+---
+- name: Launch EC2 instance.
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - /vagrant/ansible/vars/openvpn_vars
+  roles:
+    - {role: "/vagrant/ansible/roles/ec2up"}
+  
+  
+- name: Configure OpenVPN on the new EC2 instance
+  hosts: launched-instances
+  gather_facts: yes
+  become: true
+  roles:
+    - {role: "/vagrant/ansible/roles/openvpn-setup"}
+  vars_files:
+    - /vagrant/ansible/vars/openvpn_vars

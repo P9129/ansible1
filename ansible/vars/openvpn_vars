@@ -1,0 +1,41 @@
+#vars
+
+ec2_key_name: "ansible"
+ec2_instance_type: "t3.medium"
+ami_id: "ami-09fb459fad4613d55" # Example for rocky linux
+ec2_region: "us-east-1"
+assign_public_ip: true
+ec2_subnet_id: "subnet-04e9a1d467533c664"
+ec2_sg_id: "sg-0b791852148a0b2a5" 
+ec2_count: 1
+ec2_instance_tags: 
+ec2_tag_Name: "OpenVPN-1"
+c2_tag_os: " rocky "
+ec2_tag_environment: "test"
+ec2_tag_ssh_port: " 22 "
+ec2_tag_team: "devops"
+ec2_tag_app_version: "no-version"
+ec2_tag_cluster: "openvpn"
+ec2_tag_os: "rocky"
+ec2_tag_service: "vpn"
+termination_protection: false
+#ansible_ssh_private_key_file: "/vagrant/ansible.pem"
+ec2_tag_os_user: "rocky"
+# Easy-RSA and OpenVPN setup paths
+
+# vars/main.yml
+
+easy_rsa_country: "India"
+easy_rsa_province: "Mumbai"
+easy_rsa_city: "Mumbai City"
+easy_rsa_org: "JoinVentures"
+easy_rsa_email: "admin@example.com"
+easy_rsa_ou: "Community"
+easy_rsa_algo: "ec"
+easy_rsa_digest: "sha512"
+
+easy_rsa_path: "/home/rocky/easy-rsa"
+openvpn_server_path: "/etc/openvpn/server"
+client_configs_keys_path: "/home/rocky/client-configs/keys"
+client_configs_files_path: "/home/rocky/client-configs/files"
+client_configs: "/home/rocky/client-configs"

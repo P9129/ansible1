@@ -1,0 +1,21 @@
+---
+- name: List and Delete all AMIs exclude dont_delete=true tag
+  hosts: localhost
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Filter AMIs within time range and exclude dont_delete=true tag
+      set_fact:
+        amis_to_delete: >-
+          {{
+             ami_list.images
+              | selectattr('creation_date', '>=', start_time)| selectattr('creation_date', '<=', end_time)| selectattr('tags.dont_delete', 'defined')| selectattr('tags.dont_delete', 'defined') | selectattr('tags.dont_delete', 'equalto', 'false') | list + ami_facts.images | selectattr('tags.dont_delete', 'undefined') | list }}" 
+  
+    - name: Delete AMIs
+      include_role:
+        name: /vagrant/ansible/roles/delete-amis
+      vars:
+        ami_ids: "{{ amis_to_delete | map(attribute='image_id') | list }}"
+  roles:
+   - { role: "/vagrant/ansible/roles/find_ami", filters: {"image-type": "machine", "is-public": "false"} }
+   

@@ -1,0 +1,24 @@
+local 0.0.0.0
+tls-crypt ta.key
+tls-server
+cipher AES-256-GCM
+auth SHA256
+dh none
+user nobody
+group nobody
+port 1194
+proto udp
+persist-key
+persist-tun
+keepalive 10 120
+ifconfig-pool-persist ipp.txt
+cert server.crt
+key server.key
+ca ca.crt
+dev tun
+explicit-exit-notify 1
+verb 3
+server 10.8.0.0 255.255.255.0
+status openvpn-status.log
+log openvpn.log
+;crl-verify crl.pem

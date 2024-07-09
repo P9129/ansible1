@@ -1,0 +1,17 @@
+---
+- name: Delete AMIs in a specific time range except those with dont_delete=true tag
+  hosts: localhost
+  gather_facts: no 
+  roles:
+    - /vagrant/ansible/roles/delete-ami1
+  
+  vars:
+    region: us-east-1
+  tasks:
+    - name: Ensure start_time and end_time are provided
+      assert:
+        that:
+          - start_time is defined
+          - end_time is defined
+        fail_msg: "Both start_time and end_time must be provided as extra vars."
+    

@@ -1,0 +1,37 @@
+---
+- name: Launch EC2 instance
+  amazon.aws.ec2_instance:
+    key_name: "{{ ec2_key_name }}"
+    instance_type: "{{ instance_type }}"
+    image_id:  "{{ image_id }}" # Example for rocky linux
+    region: "{{ region }}"
+    wait: yes
+    network:
+      vpc_subnet_id: "{{ ec2_instance_subnet_id }}"
+      security_groups: "{{ ec2_instance_security_group }}"
+      assign_public_ip: "{{ assign_public_ip| bool }}"
+    count: "{{ ec2_instance_count }}"
+    tags:
+      Name: "{{ Name}}"
+      os: "{{ os }}"
+      environment: "{{environment}}"
+      ssh_port: "{{ssh_port}}"
+      team: "{{team}}"
+      app_version: "{{app_version}}"
+      cluster: "{{cluster}}"
+      os_user: "{{os_user}}"
+      service: "{{service}}"
+  register: ec2_instance_info
+
+- name: Add instance Public IPs to host group
+  add_host:
+    hostname: "{{ item.public_ip_address }}"
+    ansible_ssh_private_key_file: "/vagrant/ansible.pem"
+    ansible_user: "{{ ec2_tag_os_user }}"
+    groupname: launched-instances
+  loop: "{{ ec2_instance_info.instances }}"
+
+- name: Pause for 1 minute for instances to get healthy
+  ansible.builtin.pause:
+    minutes: 1
+

@@ -1,0 +1,165 @@
+---
+    - name: Update system packages
+      dnf:
+        name: "*"
+        state: latest
+
+    - name: Install EPEL release
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: Install Easy-RSA and OpenVPN
+      dnf:
+        name: 
+          - easy-rsa
+          - openvpn
+          - firewalld
+        state: present
+
+    - name: Create Easy-RSA directory
+      file:
+        path: "{{ easy_rsa_path }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Symlink Easy-RSA scripts
+      file:
+        src: /usr/share/easy-rsa/3/easyrsa
+        dest: "{{ easy_rsa_path }}/easyrsa"
+        state: link
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Initialize PKI
+      command: "{{ easy_rsa_path }}/easyrsa init-pki"
+      args:
+        chdir: "{{ easy_rsa_path }}"
+
+    - name: Create vars file
+      copy:
+        dest: "{{ easy_rsa_path }}/pki/vars"
+        content: |
+          set_var EASYRSA_REQ_COUNTRY    "{{ easy_rsa_country }}"
+          set_var EASYRSA_REQ_PROVINCE   "{{ easy_rsa_province }}"
+          set_var EASYRSA_REQ_CITY       "{{ easy_rsa_city }}"
+          set_var EASYRSA_REQ_ORG        "{{ easy_rsa_org }}"
+          set_var EASYRSA_REQ_EMAIL      "{{ easy_rsa_email }}"
+          set_var EASYRSA_REQ_OU         "{{ easy_rsa_ou }}"
+          set_var EASYRSA_ALGO           "{{ easy_rsa_algo }}"
+          set_var EASYRSA_DIGEST         "{{ easy_rsa_digest }}"
+
+    - name: Build CA certificate
+      shell: echo -e "Easy-RSA CA" | ./easyrsa build-ca nopass
+      args:
+        chdir: "{{ easy_rsa_path }}"
+
+    - name: Generate server certificate request and key
+      shell: echo -e "server" | ./easyrsa gen-req server nopass
+      args:
+        chdir: "{{ easy_rsa_path }}"
+
+    - name: Sign server certificate request
+      shell: echo -e "yes" | ./easyrsa sign-req server server
+      args:
+        chdir: "{{ easy_rsa_path }}"
+
+    - name: Copy server key and certificates to OpenVPN directory
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ openvpn_server_path }}/{{ item.dest }}"
+        remote_src: yes
+      with_items:
+        - { src: "{{ easy_rsa_path }}/pki/private/server.key", dest: "server.key" }
+        - { src: "{{ easy_rsa_path }}/pki/issued/server.crt", dest: "server.crt" }
+        - { src: "{{ easy_rsa_path }}/pki/ca.crt", dest: "ca.crt" }
+
+    - name: Generate ta.key
+      command: openvpn --genkey secret ta.key
+      args:
+        chdir: "{{ openvpn_server_path }}"
+
+    - name: Create OpenVPN server configuration
+      template:
+        src: server.conf.j2
+        dest: "{{ openvpn_server_path }}/server.conf"
+
+    - name: Enable IP forwarding
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        reload: yes
+
+    - name: Start and enable firewalld
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Configure firewall for OpenVPN
+      firewalld:
+        service: openvpn
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Add firewall rules for OpenVPN
+      firewalld:
+        port: 1194/udp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Reload firewalld
+      command: firewall-cmd --reload
+
+    - name: Ensure OpenVPN configuration directory exists
+      file:
+        path: "{{ openvpn_server_path }}"
+        state: directory
+        owner: openvpn
+        group: openvpn
+        mode: '0755'
+
+    - name: Enable and start OpenVPN service
+      systemd:
+        name: openvpn-server@server.service
+        enabled: yes
+        state: started
+
+    - name: Create client-configs directory structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0770'
+      with_items:
+        - "{{ client_configs_keys_path }}"
+        - "{{ client_configs_files_path }}"
+      
+    - name: Copy client certificate and CA certificate to client-configs directory
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: yes
+      with_items:
+        - { src: "{{ openvpn_server_path }}/ta.key", dest: "{{ client_configs_keys_path }}/ta.key" }
+        - { src: "{{ openvpn_server_path }}/ca.crt", dest: "{{ client_configs_keys_path }}/ca.crt" }
+
+    - name: Create base client configuration
+      template:
+        src: base.conf.j2
+        dest: "{{ client_configs_files_path }}/base.conf"
+
+    - name: Copy make_config.sh script
+      template:
+        src: make_config.sh
+        dest: "{{ client_configs_files_path }}/make_config.sh"
+        mode: '0777'
+
+    - name: Display completion message
+      debug:
+        msg: "OpenVPN server setup completed successfully."
